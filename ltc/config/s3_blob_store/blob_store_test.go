@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/service"
 	"github.com/cloudfoundry-incubator/lattice/ltc/config/s3_blob_store"
 )
 
@@ -39,7 +39,7 @@ var _ = Describe("BlobStore", func() {
 		}
 
 		blobStore = s3_blob_store.New(blobTargetInfo)
-		blobStore.S3.ShouldRetry = func(_ *aws.Request) bool { return false }
+		blobStore.S3.ShouldRetry = func(_ *service.Request) bool { return false }
 	})
 
 	AfterEach(func() {
@@ -58,7 +58,7 @@ var _ = Describe("BlobStore", func() {
 				Header: http.Header{"some-header": []string{"some-value"}},
 				URL:    &url.URL{Scheme: "http", Opaque: "//some-host/some-bucket", RawQuery: "some-param=some-value"},
 			}
-			blobStore.S3.Handlers.Sign.Run(&aws.Request{Time: requestTime, HTTPRequest: request})
+			blobStore.S3.Handlers.Sign.Run(&service.Request{Time: requestTime, HTTPRequest: request})
 			Expect(request.Header).To(Equal(http.Header{
 				"Host":           {"some-host"},
 				"Date":           {"Tue, 21 Jul 2015 23:09:05 UTC"},

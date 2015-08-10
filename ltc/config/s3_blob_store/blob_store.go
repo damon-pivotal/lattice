@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/service"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
@@ -40,8 +41,8 @@ func New(blobTarget Config) *BlobStore {
 	})
 
 	client.Handlers.Sign.Clear()
-	client.Handlers.Sign.PushBack(aws.BuildContentLength)
-	client.Handlers.Sign.PushBack(func(request *aws.Request) {
+	client.Handlers.Sign.PushBack(service.BuildContentLength)
+	client.Handlers.Sign.PushBack(func(request *service.Request) {
 		v2Sign(blobTarget.AccessKey, blobTarget.SecretKey, request.Time, request.HTTPRequest)
 	})
 
