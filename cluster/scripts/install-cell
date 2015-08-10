@@ -29,7 +29,6 @@ cp -an $cell_build_path/config /var/lattice
 mkdir -p /var/lattice/run
 mkdir -p /var/lattice/log
 
-install_dependencies &> /var/lattice/log/cell-install.log
 start bootstrap
 
 touch /var/lattice/ready
