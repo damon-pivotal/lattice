@@ -30,14 +30,6 @@ resources:
       private: true
       access_key_id: {{s3-access-key-id}}
       secret_access_key: {{s3-secret-access-key}}
-  - name: concourse-key
-    type: s3
-    source:
-      bucket: lattice-concourse
-      regexp: private/concourse-test-v(.*).pem
-      private: true
-      access_key_id: {{s3-access-key-id}}
-      secret_access_key: {{s3-secret-access-key}}
   - name: lattice-tar-nightly
     type: s3
     source:
@@ -108,22 +100,24 @@ jobs:
             - unit-test-s3tool
             - unit-test-tee2metron
           trigger: true
-        - get: diego-release
-        - get: cf-release
-      - aggregate:
-        - task: compile-lattice-tar
-          file: lattice/concourse/tasks/compile-lattice-tar/task.yml
-        - task: compile-ltc
-          file: lattice/concourse/tasks/compile-ltc/task.yml
-      - aggregate:
-        - put: lattice-tar-experimental
-          params:
-            from: lattice/build/lattice-v(.*).tgz
-            to: /experimental/
-        - put: ltc-tar-experimental
-          params:
-            from: lattice/build/ltc-v(.*).tgz
-            to: /experimental/
+#       - get: diego-release
+#       - get: cf-release
+        - get: lattice-tar-experimental # remove me
+        - get: ltc-tar-experimental # remove me
+#     - aggregate:
+#       - task: compile-lattice-tar
+#         file: lattice/concourse/tasks/compile-lattice-tar/task.yml
+#       - task: compile-ltc
+#         file: lattice/concourse/tasks/compile-ltc/task.yml
+#     - aggregate:
+#       - put: lattice-tar-experimental
+#         params:
+#           from: lattice/build/lattice-v(.*).tgz
+#           to: /experimental/
+#       - put: ltc-tar-experimental
+#         params:
+#           from: lattice/build/ltc-v(.*).tgz
+#           to: /experimental/
 
   - name: cluster-test
     plan:
@@ -135,7 +129,6 @@ jobs:
           passed: [compile]
         - get: ltc-tar-experimental
           passed: [compile]
-        - get: concourse-key
       - aggregate:
         - task: cluster-test-terraform
           file: lattice/concourse/tasks/cluster-test-terraform/task.yml
@@ -149,6 +142,7 @@ jobs:
             params:
               AWS_ACCESS_KEY_ID: {{s3-access-key-id}}
               AWS_SECRET_ACCESS_KEY: {{s3-secret-access-key}}
+              VAGRANT_SSH_KEY: {{vagrant-ssh-key}}
 
   - name: publish-nightly
     plan:
