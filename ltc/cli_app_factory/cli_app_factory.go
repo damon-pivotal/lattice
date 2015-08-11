@@ -36,6 +36,7 @@ import (
 	docker_runner_command_factory "github.com/cloudfoundry-incubator/lattice/ltc/docker_runner/command_factory"
 	droplet_runner_command_factory "github.com/cloudfoundry-incubator/lattice/ltc/droplet_runner/command_factory"
 	logs_command_factory "github.com/cloudfoundry-incubator/lattice/ltc/logs/command_factory"
+	service_configurer_command_factory "github.com/cloudfoundry-incubator/lattice/ltc/service_configurer/command_factory"
 	task_examiner_command_factory "github.com/cloudfoundry-incubator/lattice/ltc/task_examiner/command_factory"
 	task_runner_command_factory "github.com/cloudfoundry-incubator/lattice/ltc/task_runner/command_factory"
 )
@@ -187,13 +188,20 @@ func cliCommands(ltcConfigRoot string, exitHandler exit_handler.ExitHandler, con
 	clusterTestRunner := cluster_test.NewClusterTestRunner(config, ltcConfigRoot)
 	clusterTestCommandFactory := cluster_test_command_factory.NewClusterTestCommandFactory(clusterTestRunner)
 
-	blobStore := dav_blob_store.New(config.BlobStore())
+	blobConfig := config.BlobStore()
+	blobStore := dav_blob_store.New(blobConfig)
 
 	dropletRunner := droplet_runner.New(appRunner, taskRunner, config, blobStore, targetVerifier, appExaminer)
 	cfIgnore := cf_ignore.New()
 	dropletRunnerCommandFactory := droplet_runner_command_factory.NewDropletRunnerCommandFactory(*appRunnerCommandFactory, taskExaminer, dropletRunner, cfIgnore)
 
 	configCommandFactory := config_command_factory.NewConfigCommandFactory(config, ui, targetVerifier, dav_blob_store.Verifier{}, exitHandler)
+
+	serviceConfigurerCommandFactory := &service_configurer_command_factory.ServiceConfigurerCommandFactory{
+		AppRunnerCommandFactory: *appRunnerCommandFactory,
+		BlobStore:               dav_blob_store.New(blobConfig),
+		DockerMetadataFetcher:   dockerRunnerCommandFactoryConfig.DockerMetadataFetcher,
+	}
 
 	helpCommand := cli.Command{
 		Name:        "help",
@@ -227,6 +235,10 @@ func cliCommands(ltcConfigRoot string, exitHandler exit_handler.ExitHandler, con
 		dropletRunnerCommandFactory.MakeRemoveDropletCommand(),
 		dropletRunnerCommandFactory.MakeImportDropletCommand(),
 		dropletRunnerCommandFactory.MakeExportDropletCommand(),
+		serviceConfigurerCommandFactory.MakeCreateServiceCommand(),
+		serviceConfigurerCommandFactory.MakeListServicesCommand(),
+		serviceConfigurerCommandFactory.MakeBindServiceCommand(),
+		serviceConfigurerCommandFactory.MakeRemoveServiceCommand(),
 		helpCommand,
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -170,10 +171,45 @@ func (dr *dropletRunner) BuildDroplet(taskName, dropletName, buildpackUrl string
 	return dr.taskRunner.CreateTask(createTaskParams)
 }
 
+func (dr *dropletRunner) findBoundService(appName string) (bool, string) {
+	blobs, err := dr.blobStore.List()
+	if err != nil {
+		panic(err)
+	}
+
+	for _, blob := range blobs {
+		bindingPrefix := "bindings/" + appName + "-"
+		if strings.HasPrefix(blob.Path, bindingPrefix) {
+			return true, blob.Path[len(bindingPrefix):]
+		}
+	}
+
+	return false, ""
+}
+
+func (dr *dropletRunner) getServiceVCAP(serviceName string) string {
+	vcap, err := dr.blobStore.Download("services/" + serviceName + ".json")
+	if err != nil {
+		panic(err)
+	}
+	defer vcap.Close()
+
+	jsonBytes, err := ioutil.ReadAll(vcap)
+	if err != nil {
+		panic(err)
+	}
+
+	return string(jsonBytes)
+}
+
 func (dr *dropletRunner) LaunchDroplet(appName, dropletName string, startCommand string, startArgs []string, appEnvironmentParams app_runner.AppEnvironmentParams) error {
 	executionMetadata, err := dr.getExecutionMetadata(path.Join(dropletName, "result.json"))
 	if err != nil {
 		return err
+	}
+
+	if foundService, serviceName := dr.findBoundService(appName); foundService {
+		appEnvironmentParams.EnvironmentVariables["VCAP_SERVICES"] = dr.getServiceVCAP(serviceName)
 	}
 
 	dropletAnnotation := annotation{}

@@ -98,6 +98,16 @@ func newAppPresenter(app *cli.App) (presenter appPresenter) {
 				},
 			},
 		}, {
+			Name: "MANAGE SERVICES",
+			CommandSubGroups: [][]cmdPresenter{
+				{
+					presentCommand("create-service"),
+					presentCommand("list-services"),
+					presentCommand("bind-service"),
+					presentCommand("remove-service"),
+				},
+			},
+		}, {
 			Name: "TASKS",
 			CommandSubGroups: [][]cmdPresenter{
 				{
