@@ -304,9 +304,7 @@ func (factory *ServiceConfigurerCommandFactory) createService(context *cli.Conte
 	}
 
 	env := factory.BuildAppEnvironment(envVarsFlag, serviceName)
-	//XXX
-	env["POSTGRES_USER"] = serviceUser
-	env["POSTGRES_PASSWORD"] = servicePass
+	populateEnvForService(serviceName, serviceUser, servicePass, env)
 
 	err = factory.AppRunner.CreateApp(app_runner.CreateAppParams{
 		AppEnvironmentParams: app_runner.AppEnvironmentParams{
@@ -350,17 +348,49 @@ func (factory *ServiceConfigurerCommandFactory) createService(context *cli.Conte
 		panic(err)
 	}
 
-	//XXX
-	postgresqlVcapService := fmt.Sprintf(`{"postgresql":[{"credentials":{
-		"url": "postgres://%s:%s@%s:%d/%s"
-	}}]}`, serviceUser, servicePass, appInfo.ActualInstances[0].Ip, appInfo.ActualInstances[0].Ports[0].HostPort, serviceUser)
-
-	err = factory.BlobStore.Upload("services/"+serviceName+".json", strings.NewReader(postgresqlVcapService))
+	vcapJSON := makeVCAPServiceJSON(
+		serviceName,
+		serviceUser,
+		servicePass,
+		appInfo.ActualInstances[0].Ip,
+		appInfo.ActualInstances[0].Ports[0].HostPort,
+	)
+	err = factory.BlobStore.Upload("services/"+serviceName+".json", strings.NewReader(vcapJSON))
 	if err != nil {
 		panic(err)
 	}
 
 	factory.UI.Say("Service " + serviceName + " registered.")
+}
+
+func populateEnvForService(serviceType, serviceUser, servicePass string, env map[string]string) {
+	switch serviceType {
+	case "postgres":
+		env["POSTGRES_USER"] = serviceUser
+		env["POSTGRES_PASSWORD"] = servicePass
+	case "mysql":
+		env["MYSQL_USER"] = serviceUser
+		env["MYSQL_DATABASE"] = serviceUser
+		env["MYSQL_PASSWORD"] = servicePass
+		env["MYSQL_ROOT_PASSWORD"] = servicePass
+	default:
+		panic("unknown service type " + serviceType)
+	}
+}
+
+func makeVCAPServiceJSON(serviceType, serviceUser, servicePass, serviceIP string, servicePort uint16) string {
+	switch serviceType {
+	case "postgres":
+		return fmt.Sprintf(`{"postgresql":[{"credentials":{
+			"url": "postgres://%s:%s@%s:%d/%s"
+		}}]}`, serviceUser, servicePass, serviceIP, servicePort, serviceUser)
+	case "mysql":
+		return fmt.Sprintf(`{"mysql":[{"credentials":{
+			"url": "mysql://%s:%s@%s:%d/%s"
+		}}]}`, serviceUser, servicePass, serviceIP, servicePort, serviceUser)
+	default:
+		panic("unknown service type " + serviceType)
+	}
 }
 
 func (factory *ServiceConfigurerCommandFactory) getExposedPortsFromArgs(portsFlag string, imageMetadata *docker_metadata_fetcher.ImageMetadata) ([]uint16, error) {
