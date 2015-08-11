@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/lattice/ltc/route_helpers"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/nu7hatch/gouuid"
 )
 
 type MonitorMethod int
@@ -201,6 +202,11 @@ func (appRunner *appRunner) desireLrp(params CreateAppParams) error {
 		appRoutes = appRunner.buildDefaultRoutingInfo(params.Name, params.ExposedPorts, primaryPort)
 	}
 
+	envVars = append(envVars, receptor.EnvironmentVariable{
+		Name:  "VCAP_APPLICATION",
+		Value: buildVCAPApplicationJSON(params.Name, appRoutes[0].Hostnames, params.MemoryMB),
+	})
+
 	req := receptor.DesiredLRPCreateRequest{
 		ProcessGuid:          params.Name,
 		Domain:               lrpDomain,
@@ -310,6 +316,37 @@ func buildEnvironmentVariables(environmentVariables map[string]string) []recepto
 		appEnvVars = append(appEnvVars, receptor.EnvironmentVariable{Name: name, Value: value})
 	}
 	return appEnvVars
+}
+
+func buildVCAPApplicationJSON(appName string, appRoutes []string, memoryMB int) string {
+
+	vcapApplication := struct {
+		ApplicationName    string   `json:"application_name"`
+		ApplicationURIs    []string `json:"application_uris"`
+		ApplicationVersion string   `json:"application_version"`
+		Limits             struct {
+			Disk int `json:"disk"`
+			FDs  int `json:"fds"`
+			Mem  int `json:"mem"`
+		}
+		Name    string   `json:"name"`
+		URIs    []string `json:"uris"`
+		Version string   `json:"version"`
+	}{}
+
+	uuid, _ := uuid.NewV4()
+	vcapApplication.ApplicationName = appName
+	vcapApplication.ApplicationURIs = appRoutes
+	vcapApplication.ApplicationVersion = uuid.String()
+	vcapApplication.Limits.Disk = 1024
+	vcapApplication.Limits.FDs = 16384
+	vcapApplication.Limits.Mem = memoryMB
+	vcapApplication.Name = appName
+	vcapApplication.URIs = appRoutes
+	vcapApplication.Version = uuid.String()
+
+	bytes, _ := json.Marshal(vcapApplication)
+	return string(bytes)
 }
 
 func userForPrivilege(privilege bool) string {
