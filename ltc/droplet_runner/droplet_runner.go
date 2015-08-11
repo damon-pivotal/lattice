@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -107,7 +108,13 @@ func (dr *dropletRunner) BuildDroplet(taskName, dropletName, buildpackUrl string
 	builderConfig := buildpack_app_lifecycle.NewLifecycleBuilderConfig([]string{buildpackUrl}, true, false)
 
 	if foundService, serviceName := dr.findBoundService(dropletName); foundService {
-		environment["VCAP_SERVICES"] = dr.getServiceVCAP(serviceName)
+		vcap := dr.getServiceVCAP(serviceName)
+
+		re := regexp.MustCompile(`"uri": "([^"]+)"`)
+		m := re.FindAllStringSubmatch(vcap, 1)
+
+		environment["VCAP_SERVICES"] = vcap
+		environment["DATABASE_URL"] = m[0][1]
 	}
 
 	dropletURL := fmt.Sprintf("http://%s:%s@%s:%s%s",
@@ -213,7 +220,13 @@ func (dr *dropletRunner) LaunchDroplet(appName, dropletName string, startCommand
 	}
 
 	if foundService, serviceName := dr.findBoundService(appName); foundService {
-		appEnvironmentParams.EnvironmentVariables["VCAP_SERVICES"] = dr.getServiceVCAP(serviceName)
+		vcap := dr.getServiceVCAP(serviceName)
+
+		re := regexp.MustCompile(`"uri": "([^"]+)"`)
+		m := re.FindAllStringSubmatch(vcap, 1)
+
+		appEnvironmentParams.EnvironmentVariables["VCAP_SERVICES"] = vcap
+		appEnvironmentParams.EnvironmentVariables["DATABASE_URL"] = m[0][1]
 	}
 
 	dropletAnnotation := annotation{}

@@ -382,12 +382,18 @@ func makeVCAPServiceJSON(serviceType, serviceUser, servicePass, serviceIP string
 	switch serviceType {
 	case "postgres":
 		return fmt.Sprintf(`{"postgresql":[{"credentials":{
-			"url": "postgres://%s:%s@%s:%d/%s"
-		}}]}`, serviceUser, servicePass, serviceIP, servicePort, serviceUser)
+				"url": "postgres://%s:%s@%s:%d/%s",
+				"uri": "postgres://%s:%s@%s:%d/%s"
+			}}]}`,
+			serviceUser, servicePass, serviceIP, servicePort, serviceUser,
+			serviceUser, servicePass, serviceIP, servicePort, serviceUser)
 	case "mysql":
 		return fmt.Sprintf(`{"mysql":[{"credentials":{
-			"url": "mysql://%s:%s@%s:%d/%s"
-		}}]}`, serviceUser, servicePass, serviceIP, servicePort, serviceUser)
+				"url": "mysql://%s:%s@%s:%d/%s",
+				"uri": "mysql://%s:%s@%s:%d/%s"
+			}}]}`,
+			serviceUser, servicePass, serviceIP, servicePort, serviceUser,
+			serviceUser, servicePass, serviceIP, servicePort, serviceUser)
 	default:
 		panic("unknown service type " + serviceType)
 	}
