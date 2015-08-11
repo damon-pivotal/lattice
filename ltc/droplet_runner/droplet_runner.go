@@ -106,6 +106,10 @@ func (dr *dropletRunner) UploadBits(dropletName, uploadPath string) error {
 func (dr *dropletRunner) BuildDroplet(taskName, dropletName, buildpackUrl string, environment map[string]string, memoryMB, cpuWeight, diskMB int) error {
 	builderConfig := buildpack_app_lifecycle.NewLifecycleBuilderConfig([]string{buildpackUrl}, true, false)
 
+	if foundService, serviceName := dr.findBoundService(dropletName); foundService {
+		environment["VCAP_SERVICES"] = dr.getServiceVCAP(serviceName)
+	}
+
 	dropletURL := fmt.Sprintf("http://%s:%s@%s:%s%s",
 		dr.config.BlobStore().Username,
 		dr.config.BlobStore().Password,
