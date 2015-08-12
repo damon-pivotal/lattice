@@ -1,0 +1,36 @@
+
+ltc create-service postgres postgres dbuser secret -m 256 -r --no-monitor
+
+ltc create-service mysql mysql dbuser2 secret2 -m 512 -r --no-monitor
+
+ltc list-services
+
+# ./gradlew assemble
+
+ltc build-droplet spring java -p build/libs/spring-music.war
+
+ltc list-droplets
+
+ltc bind-service spring-p postgres
+
+ltc bind-service spring-m mysql
+
+ltc launch-droplet spring-p spring -m 512
+
+ltc ls
+
+curl -s http://spring-p.192.168.11.11.xip.io/info|jq -c -r .profiles
+
+psql -U dbuser -h 192.168.11.11 -p $(ltc st postgres|grep 'Port Mapping'|cut -d: -f1|cut -f2) dbuser -c 'SELECT * FROM Album'
+
+ > type 'secret'
+
+ltc launch-droplet spring-m spring -m 512
+
+ltc ls
+
+curl -s http://spring-m.192.168.11.11.xip.io/info|jq -c -r .profiles
+
+mysql -u dbuser2 -h 192.168.11.11 -p -P $(ltc st mysql|grep 'Port Mapping'|cut -d: -f1|cut -f2) dbuser2 -e 'SELECT * FROM Album'
+
+ > type 'secret2'
